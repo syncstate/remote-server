@@ -1,1 +1,4 @@
-export * from './remoteServer';
+export {
+  default as SyncStateRemote,
+  ChangeReadyCallback,
+} from './remoteServer';
