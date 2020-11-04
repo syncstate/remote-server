@@ -1,5 +1,3 @@
-import { enablePatches, applyPatches } from 'immer';
-
 export type ChangeReadyCallback = (path: string, change: any) => void;
 
 export default class SyncStateRemote {
