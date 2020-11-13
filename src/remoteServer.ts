@@ -1,14 +1,41 @@
+import { applyPatches, enablePatches } from 'immer';
+
+enablePatches();
+
 export type ChangeReadyCallback = (path: string, change: any) => void;
 
 export default class SyncStateRemote {
-  document: any = {};
-  changeReadyMap = new Map<string, Array<ChangeReadyCallback>>();
+  clientDataMap = new Map<
+    string,
+    {
+      pathDataMap: Map<string, any>;
+      changeReadyCallbacks: Array<ChangeReadyCallback>;
+    }
+  >();
+
+  loadPatches(clientId: string, path: string, changesList: any[]) {
+    let clientData = this.clientDataMap.get(clientId);
+
+    if (!clientData) {
+      clientData = {
+        changeReadyCallbacks: [],
+        pathDataMap: new Map(),
+      };
+      clientData.pathDataMap.set(path, buildDocument(changesList));
+      this.clientDataMap.set(clientId, clientData);
+    }
+
+    const document = clientData.pathDataMap.get(path);
+    if (!document) {
+      clientData.pathDataMap.set(path, buildDocument(changesList));
+    }
+  }
 
   processChange(clientId: string, path: string, change: any) {
     // setTimeout(() => {
-    let changeReadyCallbacks = this.changeReadyMap.get(clientId);
-    if (changeReadyCallbacks) {
-      changeReadyCallbacks.forEach(cb => {
+    let pathData = this.clientDataMap.get(clientId);
+    if (pathData) {
+      pathData.changeReadyCallbacks.forEach(cb => {
         cb(path, change);
       });
     }
@@ -17,18 +44,28 @@ export default class SyncStateRemote {
   }
 
   onChangeReady(clientId: string, cb: ChangeReadyCallback) {
-    let changeReadyCallbacks = this.changeReadyMap.get(clientId);
+    let clientData = this.clientDataMap.get(clientId);
 
-    if (!changeReadyCallbacks) {
-      changeReadyCallbacks = [];
-      this.changeReadyMap.set(clientId, changeReadyCallbacks);
+    if (!clientData) {
+      clientData = {
+        changeReadyCallbacks: [],
+        pathDataMap: new Map(),
+      };
+      this.clientDataMap.set(clientId, clientData);
     }
-    const newLength = changeReadyCallbacks.push(cb);
+    const newLength = clientData.changeReadyCallbacks.push(cb);
 
     return () => {
-      if (changeReadyCallbacks) {
-        changeReadyCallbacks.splice(newLength - 1, 1);
+      if (clientData) {
+        clientData.changeReadyCallbacks.splice(newLength - 1, 1);
       }
     };
   }
+}
+
+function buildDocument(changesList: any[]) {
+  return applyPatches(
+    {},
+    changesList.map(c => c.patch)
+  );
 }
