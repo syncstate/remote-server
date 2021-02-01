@@ -74,7 +74,7 @@ export default class SyncStateRemote {
 
 function getCompressedPatches(changesList: any[]) {
   const initialState = {};
-  const [nextState, patches, inversePatches] = produceWithPatches(
+  const [, patches, inversePatches] = produceWithPatches(
     initialState,
     draft => {
       applyPatches(
