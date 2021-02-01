@@ -1,4 +1,4 @@
-import { applyPatches, enablePatches } from 'immer';
+import { applyPatches, enablePatches, Patch, produceWithPatches } from 'immer';
 
 enablePatches();
 
@@ -13,7 +13,7 @@ export default class SyncStateRemote {
     }
   >();
 
-  loadPatches(clientId: string, path: string, changesList: any[]) {
+  getInitialPatches(clientId: string, path: string, changesList: any[]) {
     let clientData = this.clientDataMap.get(clientId);
 
     if (!clientData) {
@@ -21,21 +21,30 @@ export default class SyncStateRemote {
         changeReadyCallbacks: [],
         pathDataMap: new Map(),
       };
-      clientData.pathDataMap.set(path, buildDocument(changesList));
+      // clientData.pathDataMap.set(path, buildDocument(changesList));
       this.clientDataMap.set(clientId, clientData);
     }
 
-    const document = clientData.pathDataMap.get(path);
-    if (!document) {
-      clientData.pathDataMap.set(path, buildDocument(changesList));
+    let initialPatches = clientData.pathDataMap.get(path);
+    if (!initialPatches) {
+      initialPatches = getCompressedPatches(changesList);
+      clientData.pathDataMap.set(path, initialPatches);
     }
+    return initialPatches;
+    // }
   }
 
   processChange(clientId: string, path: string, change: any) {
     // setTimeout(() => {
-    let pathData = this.clientDataMap.get(clientId);
-    if (pathData) {
-      pathData.changeReadyCallbacks.forEach(cb => {
+    let clientData = this.clientDataMap.get(clientId);
+    if (clientData) {
+      const documentAtPath = clientData.pathDataMap.get(path);
+
+      if (documentAtPath) {
+        clientData.pathDataMap.set(path, applyPatches(documentAtPath, change));
+      }
+
+      clientData.changeReadyCallbacks.forEach(cb => {
         cb(path, change);
       });
     }
@@ -63,9 +72,31 @@ export default class SyncStateRemote {
   }
 }
 
-function buildDocument(changesList: any[]) {
-  return applyPatches(
-    {},
-    changesList.map(c => c.patch)
+function getCompressedPatches(changesList: any[]) {
+  const initialState = {};
+  const [nextState, patches, inversePatches] = produceWithPatches(
+    initialState,
+    draft => {
+      applyPatches(
+        draft,
+        changesList.map(c => c.patch)
+      );
+    }
   );
+
+  const changes: Array<{ patch: Patch; inversePatch: Patch }> = [];
+
+  patches.forEach((patch: any, index: number) => {
+    changes.push({
+      patch,
+      inversePatch: inversePatches[index],
+    });
+  });
+
+  return changes;
+
+  // applyPatches(
+  //   {},
+  //   changesList.map(c => c.patch)
+  // );
 }
