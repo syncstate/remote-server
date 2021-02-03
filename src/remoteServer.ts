@@ -3,7 +3,7 @@ import {
   immerPathToJsonPatchPath,
   jsonPatchPathToImmerPath,
 } from '@syncstate/core';
-import set from 'lodash.set';
+// import set from 'lodash.set';
 
 enablePatches();
 
@@ -35,8 +35,7 @@ export default class SyncStateRemote {
     // if (!initialChanges) {
     // let documentAtPath;
     const { initialChanges, documentAtPath } = getCompressedPatches(
-      changesList,
-      path
+      changesList
     );
     this.documentsAtPath.set(path, documentAtPath);
     // }
@@ -95,15 +94,15 @@ export default class SyncStateRemote {
   }
 }
 
-function getCompressedPatches(changesList: any[], path: string) {
+function getCompressedPatches(changesList: any[]) {
   let initialState = {};
-  const immerPath = jsonPatchPathToImmerPath(path);
+  // const immerPath = jsonPatchPathToImmerPath(path);
   // const [
   //   initialState,
   //   pathCreationPatches,
   //   pathCreationInversePatches,
   // ] = produceWithPatches(emptyState, draft => {
-  set(initialState, immerPath, {});
+  // set(initialState, immerPath, {});
   // });
   // console.log(immerPath, initialState, 'immerPath');
 
